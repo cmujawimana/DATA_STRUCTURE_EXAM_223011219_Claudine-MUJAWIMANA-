@@ -1,8 +1,10 @@
 #include <iostream> 
 using namespace std;
 int main() {  
-int age = 18;
-if (age >= 18) {
-    cout << "You are an adult." << endl;
-}
+int a = 10, b = 3;
+    cout << "Sum: " << a + b << endl;
+    cout << "Difference: " << a - b << endl;
+    cout << "Product: " << a * b << endl;
+    cout << "Quotient: " << a / b << endl;
+    cout << "Remainder: " << a % b << endl;
 }

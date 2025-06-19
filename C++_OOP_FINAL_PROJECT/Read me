@@ -1,1 +1,173 @@
+#How my project works
+Restaurant ordering system uses an object‑oriented C++ design to manage menu items and different order types. 
+A static array holds MenuItem entries (name + price), while the abstract Order class—with derived versions for table and delivery orders uses dynamic pointer arrays to collect items.
+Each order type calculates its total cost polymorphically (adding service or delivery fees). Orders live in a dynamic Order list, and addOrder/removeOrder functions resize that list on the fly, 
+ensuring that calling totalCost() always triggers the correct subclass behavior.”
+As it is indicated by the output, they display out the menu  of the restaurant, and they ask you how many items do do want to order and then you select the item based in their index.
+In choosing the order you first choose if it's a table order or delivery order and the services fees will differ.
+
+# codes with the comments to explain them
+#include <iostream>  : this is input/output stream which will allow the input/outpu operations to be carried out.
+#include <cstring> :For C-style string functions like strcpy
+using namespace std; : Use the std namespace to simplify code, also this can be used to avoid errors when there is overloading of the codes.
+
+// --- 1. Define a MenuItem struct ---
+This is the structure to hold menu items with a name and price (in Rwandan Francs)
+struct MenuItem {
+    char name[30]; : Variable named Name to store the names  of the menu item (up to 29 characters + null)
+    float price;    : this variable Price will store proice  of the menu items in rwf and they will be having float datatype.
+};
+// --- 2. Abstract Order base class ---
+This represents a generic order; cannot be instantiated directly
+class Order {
+public:
+    MenuItem** items; : Dynamic array of pointers to selected MenuItems and they are declared as public access modifier so that they can be accessed anywhere in the program.
+    int nItems;        :  This variable stores Number of items in this order
+    Order(MenuItem** items, int nItems) : items(items), nItems(nItems) {} :Constructor initializes items pointer and item count
+    virtual float totalCost() = 0; : Pure virtual function: must be implemented by subclasses to calculate cost
+    virtual ~Order() {} : Virtual destructor ensures proper cleanup in derived classes
+};
+
+// --- 3. TableOrder subclass ---
+class TableOrder : public Order { : This is the class table order which wilkl contain member data and member functions to those who will plavce an order without delivering them and it will aslo add the service fee.
+public:
+    TableOrder(MenuItem** items, int nItems) : Order(items, nItems) {}
+
+    // The following function totalcost, Sum item prices and add RWF 200 service charge
+    float totalCost() override {
+        float total = 0;
+        for (int i = 0; i < nItems; ++i)
+            total += (*(items + i))->price;  // Pointer arithmetic to access price
+        return total + 200;                 // add service fee in rwf
+    }
+};
+
+// --- 4. DeliveryOrder subclass ---
+class DeliveryOrder : public Order { :This is the class which will handle all the order to be delivered at a certain place and the service fee will be added to the total cost.
+public:
+    DeliveryOrder(MenuItem** items, int nItems) : Order(items, nItems) {}
+    float totalCost() override { : this function totalcost, will Sum item prices and add RWF 500 delivery fee
+        float total = 0;
+        for (int i = 0; i < nItems; ++i)
+            total += (*(items + i))->price;  // same pointer arithmetic
+        return total + 500;                 // add delivery fee in rwf
+    }
+};
+// --- 5. OrderSystem class ---
+class OrderSystem { : this class ordersystem, Manages a dynamic list of orders, supporting add/remove/show totals
+    Order** orders; :Dynamic array of Order pointers
+    int count;       :Current number of orders
+
+public:
+    OrderSystem() : orders(nullptr), count(0) {} : Initialize empty list which will hold new items added in the order
+    void addOrder(Order* o) { : Add a new order (Table or Delivery)
+        Order** newOrders = new Order*[count + 1];
+        for (int i = 0; i < count; ++i)
+            newOrders[i] = orders[i];
+        newOrders[count] = o; :add new order
+        delete[] orders;      : free/release the memory allocation of old array
+        orders = newOrders;    :reassign pointer
+        count++;
+    }
+    void removeOrder(int index) { : Remove order by its index with validation
+        if (index < 0 || index >= count) {
+            cout << "Invalid order index.\n";
+            return;
+        }
+        Order** newOrders = new Order*[count - 1];
+        for (int i = 0, j = 0; i < count; ++i) {
+            if (i != index)
+                newOrders[j++] = orders[i];
+        }
+        delete orders[index];  :clean up removed order
+        delete[] orders;        :free old array and release the memory allocation for the next use
+        orders = newOrders;      :reassign pointer
+        count--;
+    }
+    void showTotals() { :Display total cost of each order using polymorphism
+        for (int i = 0; i < count; ++i) {
+            cout << "Order " << i << " total: rwf "
+                 << orders[i]->totalCost() << endl;
+        }
+    }
+    ~OrderSystem() { : Destructor: clean up all orders and the array itself
+        for (int i = 0; i < count; ++i)
+            delete orders[i];
+        delete[] orders;
+    }
+};
+// --- 6. displayMenu function ---
+void displayMenu(MenuItem menu[], int size) { : Presents the menu items with prices to the user
+    cout << "MENU:\n";
+    for (int i = 0; i < size; ++i)
+        cout << i << ". " << menu[i].name
+             << " - rwf " << menu[i].price << endl;
+}
+
+// --- 7. main() function ---
+int main() { : Drives user interaction with add/remove/show/exiting the system
+    // Static menu definition
+    MenuItem menu[5] = {
+        {"Burger", 1000},
+        {"Pizza", 500},
+        {"Juice", 1500},
+        {"Fries", 3000},
+        {"Salad", 1200}
+    };
+    int menuSize = 5;   :Number of items in the menu
+    OrderSystem system; :Create order manager object
+    int choice;
+    while (true) {
+        // User menu options
+        cout << "\n1. Add Table Order\n"
+             << "2. Add Delivery Order\n"
+             << "3. Remove Order\n"
+             << "4. Show All Totals\n"
+             << "5. Exit\n"
+             << "Choice: ";
+        cin >> choice;
+        if (choice == 1 || choice == 2) {
+            int nItems;
+            displayMenu(menu, menuSize);
+            cout << "How many items in the order? ";
+            cin >> nItems;
+
+            // Allocate array for user-selected items
+            MenuItem** selectedItems = new MenuItem*[nItems];
+            for (int i = 0; i < nItems; ++i) {
+                int itemIndex;
+                cout << "Enter menu index for item " << (i + 1) << ": ";
+                cin >> itemIndex;
+                if (itemIndex >= 0 && itemIndex < menuSize)
+                    selectedItems[i] = &menu[itemIndex];
+                else {
+                    cout << "Invalid index. Using item 0 by default.\n";
+                    selectedItems[i] = &menu[0];
+                }
+            }
+            // Add correct subclass based on user choice
+            if (choice == 1)
+                system.addOrder(new TableOrder(selectedItems, nItems));
+            else
+                system.addOrder(new DeliveryOrder(selectedItems, nItems));
+
+        } else if (choice == 3) {
+            int index;
+            cout << "Enter order index to remove: ";
+            cin >> index;
+            system.removeOrder(index);
+
+        } else if (choice == 4) {
+            system.showTotals();
+
+        } else if (choice == 5) {
+            break; // exit loop
+
+        } else {
+            cout << "Invalid choice. Try again.\n";
+        }
+    }
+
+    return 0; // Program ends
+}
 
